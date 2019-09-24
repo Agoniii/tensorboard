@@ -44,6 +44,8 @@ module tf.graph.hierarchy {
     devices: string[];
     /** List of all XLA cluster names */
     xlaClusters: string[];
+    /** List of all AMP cluster names */
+    ampClusters: string[];
     /** True if at least one tensor in the graph has shape information */
     hasShapeInfo: boolean;
     /** The maximum size across all meta edges. Used for scaling thickness. */
@@ -71,6 +73,7 @@ module tf.graph.hierarchy {
     private index: {[nodeName: string]: GroupNode | OpNode};
     devices: string[];
     xlaClusters: string[];
+    ampClusters: string[];
     hasShapeInfo = false;
     maxMetaEdgeSize = 1;
     orderings: {[nodeName: string]: {[childName: string]: number}};
@@ -89,6 +92,7 @@ module tf.graph.hierarchy {
       this.templates = null;
       this.devices = null;
       this.xlaClusters = null;
+      this.ampClusters = null;
       /**
        * @type {Object} Dictionary object that maps node name to the node
        * (could be op-node, metanode, or series-node)
@@ -462,9 +466,10 @@ module tf.graph.hierarchy {
         'Adding nodes',
         20,
         () => {
-          // Get all the possible device and XLA cluster names.
+          // Get all the possible device, XLA cluster names and AMP cluster names.
           let deviceNames = {};
           let xlaClusterNames = {};
+          let ampClusterNames = {};
           _.each(graph.nodes, (node, nodeName) => {
             if (node.device) {
               deviceNames[node.device] = true;
@@ -473,10 +478,15 @@ module tf.graph.hierarchy {
             if (node.xlaCluster) {
               xlaClusterNames[node.xlaCluster] = true;
             }
+
+            if (node.ampCluster) {
+              ampClusterNames[node.ampCluster] = true;
+            }
           });
 
           h.devices = _.keys(deviceNames);
           h.xlaClusters = _.keys(xlaClusterNames);
+          h.ampClusters = _.keys(ampClusterNames);
 
           addNodes(h, graph);
         },
@@ -533,6 +543,7 @@ module tf.graph.hierarchy {
     // Get all the possible device and XLA cluster names.
     let deviceNames = {};
     let xlaClusterNames = {};
+    let ampClusterNames = {};
     _.each(h.root.leaves(), (nodeName) => {
       let leaf = <OpNode>h.node(nodeName);
       if (leaf.device != null) {
@@ -541,9 +552,13 @@ module tf.graph.hierarchy {
       if (leaf.xlaCluster != null) {
         xlaClusterNames[leaf.xlaCluster] = true;
       }
+      if (leaf.ampCluster != null) {
+        ampClusterNames[leaf.ampCluster] = true;
+      }
     });
     h.devices = _.keys(deviceNames);
     h.xlaClusters = _.keys(xlaClusterNames);
+    h.ampClusters = _.keys(ampClusterNames);
 
     // Reset stats for each group node.
     _.each(h.getNodeMap(), (node, nodeName) => {
@@ -568,6 +583,12 @@ module tf.graph.hierarchy {
             .xlaClusterHistogram;
           xlaClusterHistogram[leaf.xlaCluster] =
             (xlaClusterHistogram[leaf.xlaCluster] || 0) + 1;
+        }
+        if (leaf.ampCluster != null) {
+          let ampClusterHistogram = (<GroupNode>node.parentNode)
+            .ampClusterHistogram;
+          ampClusterHistogram[leaf.ampCluster] =
+            (ampClusterHistogram[leaf.ampCluster] || 0) + 1;
         }
         if (leaf.stats != null) {
           node.parentNode.stats.combine(leaf.stats);
@@ -664,6 +685,10 @@ module tf.graph.hierarchy {
         if (node.xlaCluster != null) {
           parent.xlaClusterHistogram[node.xlaCluster] =
             (parent.xlaClusterHistogram[node.xlaCluster] || 0) + 1;
+        }
+        if (node.ampCluster != null) {
+          parent.ampClusterHistogram[node.ampCluster] =
+            (parent.ampClusterHistogram[node.ampCluster] || 0) + 1;
         }
 
         // Increment parents appropriate compatibility count
@@ -927,6 +952,10 @@ module tf.graph.hierarchy {
         if (child.xlaCluster != null) {
           seriesNode.xlaClusterHistogram[child.xlaCluster] =
             (seriesNode.xlaClusterHistogram[child.xlaCluster] || 0) + 1;
+        }
+        if (child.ampCluster != null) {
+          seriesNode.ampClusterHistogram[child.ampCluster] =
+            (seriesNode.ampClusterHistogram[child.ampCluster] || 0) + 1;
         }
 
         // Increment parents appropriate compatibility count

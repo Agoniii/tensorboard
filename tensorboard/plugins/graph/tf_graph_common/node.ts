@@ -722,6 +722,7 @@ module tf.graph.scene.node {
     STRUCTURE,
     DEVICE,
     XLA_CLUSTER,
+    AMP_CLUSTER,
     COMPUTE_TIME,
     MEMORY,
     OP_COMPATIBILITY,
@@ -837,7 +838,18 @@ module tf.graph.scene.node {
               renderInfo.xlaClusterColors,
               svgRoot
             );
-
+      case ColorBy.AMP_CLUSTER:
+        if (renderInfo.ampClusterColors == null) {
+          // Return the hue for unknown ampCluster.
+          return colorParams.UNKNOWN;
+        }
+        return isExpanded
+          ? colorParams.EXPANDED_COLOR
+          : getGradient(
+              'amp-' + renderInfo.node.name,
+              renderInfo.ampClusterColors,
+              svgRoot
+            );
       case ColorBy.COMPUTE_TIME:
         return isExpanded
           ? colorParams.EXPANDED_COLOR

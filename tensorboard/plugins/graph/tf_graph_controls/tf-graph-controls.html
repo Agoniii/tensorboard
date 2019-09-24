@@ -150,7 +150,8 @@ limitations under the License.
         font-weight: normal;
       }
       .deviceList,
-      .xlaClusterList {
+      .xlaClusterList 
+      .ampClusterList {
         max-height: 200px;
         overflow-y: auto;
       }
@@ -432,6 +433,23 @@ limitations under the License.
           </paper-tooltip>
 
           <paper-radio-button
+            id="amp-radio-button"
+            name="amp_cluster"
+            disabled="[[!_ampClustersProvided(renderHierarchy)]]"
+          >
+            AMP Cluster
+          </paper-radio-button>
+          <paper-tooltip
+            animation-delay="0"
+            for="amp-cluster-radio-button"
+            position="right"
+            offset="0"
+          >
+            Coloring by AMP cluster is only enabled if at least 1 op specifies
+            an AMP cluster.
+          </paper-tooltip>
+
+          <paper-radio-button
             id="compute-time-radio-button"
             name="compute_time"
             disabled="[[!stats]]"
@@ -587,6 +605,7 @@ limitations under the License.
             </div>
           </div>
         </template>
+
         <template is="dom-if" if="[[_equals(colorBy, 'xla_cluster')]]">
           <div>
             <template is="dom-repeat" items="[[_currentXlaClusterParams]]">
@@ -616,6 +635,37 @@ limitations under the License.
             </div>
           </div>
         </template>
+
+        <template is="dom-if" if="[[_equals(colorBy, 'amp_cluster')]]">
+          <div>
+            <template is="dom-repeat" items="[[_currentAmpClusterParams]]">
+              <div class="color-legend-row">
+                <svg>
+                  <use
+                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xlink:href="#unfilled-rect"
+                    x="0"
+                    y="0"
+                    style="fill:[[item.color]]"
+                  />
+                </svg>
+                <span class="color-legend-value">[[item.amp_cluster]]</span>
+              </div>
+            </template>
+            <div class="color-legend-row">
+              <svg>
+                <use
+                  xmlns:xlink="http://www.w3.org/1999/xlink"
+                  xlink:href="#grey-rect"
+                  x="0"
+                  y="0"
+                />
+              </svg>
+              <span class="color-legend-value">unknown AMP cluster</span>
+            </div>
+          </div>
+        </template>
+
         <template is="dom-if" if="[[_equals(colorBy, 'op_compatibility')]]">
           <div class="color-text">
             <div class="color-legend-row">

@@ -277,6 +277,15 @@ limitations under the License.
                 };
               }
             ),
+            amp_cluster: _.map(
+              renderGraph.ampClusterColorMap.domain(),
+              function(ampClusterName) {
+                return {
+                  amp_cluster: ampClusterName,
+                  color: renderGraph.ampClusterColorMap(ampClusterName),
+                };
+              }
+            ),
           });
           this._setRenderHierarchy(renderGraph);
           this.async(function() {

@@ -66,6 +66,9 @@ module tf.graph.render {
     XLA_CLUSTER_PALETTE(index: number): string {
       return MetanodeColors.STRUCTURE_PALETTE(index);
     },
+    AMP_CLUSTER_PALETTE(index: number): string {
+      return MetanodeColors.STRUCTURE_PALETTE(index);
+    },
     UNKNOWN: '#eee',
     GRADIENT_OUTLINE: '#888',
   };
@@ -201,6 +204,7 @@ module tf.graph.render {
     private renderedOpNames: string[];
     private deviceColorMap: d3.ScaleOrdinal<string, string>;
     private xlaClusterColorMap: d3.ScaleOrdinal<string, string>;
+    private ampClusterColorMap: d3.ScaleOrdinal<string, string>;
     private memoryUsageScale: d3.ScaleLinear<string, string>;
     private computeTimeScale: d3.ScaleLinear<string, string>;
     /** Scale for the thickness of edges when there is no shape information. */
@@ -258,6 +262,16 @@ module tf.graph.render {
           _.map(
             d3.range(this.hierarchy.xlaClusters.length),
             MetanodeColors.XLA_CLUSTER_PALETTE
+          )
+        );
+
+      this.ampClusterColorMap = d3
+        .scaleOrdinal<string>()
+        .domain(this.hierarchy.ampClusters)
+        .range(
+          _.map(
+            d3.range(this.hierarchy.ampClusters.length),
+            MetanodeColors.AMP_CLUSTER_PALETTE
           )
         );
 
@@ -370,10 +384,12 @@ module tf.graph.render {
 
       var deviceHistogram = null;
       var xlaClusterHistogram = null;
+      var ampClusterHistogram = null;
       var opCompatibility = null;
       if (node.isGroupNode) {
         deviceHistogram = (<GroupNode>node).deviceHistogram;
         xlaClusterHistogram = (<GroupNode>node).xlaClusterHistogram;
+        ampClusterHistogram = (<GroupNode>node).ampClusterHistogram;
         let compat = (<GroupNode>node).compatibilityHistogram.compatible;
         let incompat = (<GroupNode>node).compatibilityHistogram.incompatible;
         if (compat != 0 || incompat != 0) {
@@ -387,6 +403,10 @@ module tf.graph.render {
         let xlaCluster = (<OpNode>renderInfo.node).xlaCluster;
         if (xlaCluster) {
           xlaClusterHistogram = {[xlaCluster]: 1};
+        }
+        let ampCluster = (<OpNode>renderInfo.node).ampCluster;
+        if (ampCluster) {
+          ampClusterHistogram = {[ampCluster]: 1};
         }
         if (renderInfo.node.type === NodeType.OP) {
           opCompatibility = (<OpNode>renderInfo.node).compatible ? 1 : 0;
@@ -402,6 +422,12 @@ module tf.graph.render {
         renderInfo.xlaClusterColors = this.colorHistogram(
           xlaClusterHistogram,
           this.xlaClusterColorMap
+        );
+      }
+      if (ampClusterHistogram) {
+        renderInfo.ampClusterColors = this.colorHistogram(
+          ampClusterHistogram,
+          this.ampClusterColorMap
         );
       }
       if (opCompatibility != null) {
@@ -531,6 +557,7 @@ module tf.graph.render {
       newOpNode.include = node.include;
       newOpNode.outputShapes = _.cloneDeep(node.outputShapes);
       newOpNode.xlaCluster = node.xlaCluster;
+      newOpNode.ampCluster = node.ampCluster;
       newOpNode.functionInputIndex = node.functionInputIndex;
       newOpNode.functionOutputIndex = node.functionOutputIndex;
 
@@ -650,6 +677,9 @@ module tf.graph.render {
       newMetanode.deviceHistogram = _.clone(libraryMetanode.deviceHistogram);
       newMetanode.xlaClusterHistogram = _.clone(
         libraryMetanode.xlaClusterHistogram
+      );
+      newMetanode.ampClusterHistogram = _.clone(
+        libraryMetanode.ampClusterHistogram
       );
       newMetanode.hasNonControlEdges = libraryMetanode.hasNonControlEdges;
       newMetanode.include = libraryMetanode.include;
@@ -1712,6 +1742,13 @@ module tf.graph.render {
      * color with proportion 1.0.
      */
     xlaClusterColors: Array<{color: string; proportion: number}>;
+
+    /**
+     * List of (color, proportion) tuples based on the proportion of ampClusters
+     * of its children. If this node is an op node, this list will have only one
+     * color with proportion 1.0.
+     */
+    ampClusterColors: Array<{color: string; proportion: number}>;
 
     /**
      * List of (color, proportion) tuples based on the proportion of compatible

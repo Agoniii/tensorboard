@@ -66,6 +66,9 @@ module tf.graph {
   /** Attribute key reserved for the XLA cluster that an op runs on. */
   const _XLA_CLUSTER_KEY = '_XlaCluster';
 
+  /** Attribute key reserved for the AMP cluster that an op runs on. */
+  const _AMP_CLUSTER_KEY = '_AmpCluster';
+
   /**
    * A BaseEdge is the label object (in the graphlib sense) for an edge in the
    * original, full graph produced after parsing. Subsequent graphs, like those
@@ -184,6 +187,9 @@ module tf.graph {
 
     // The XLA Cluster on which the op ran. Null if it is unknown.
     xlaCluster: string;
+
+    // The AMP Cluster on which the op ran. Null if it is unknown.
+    ampCluster: string;
 
     // Whether op is compatible with its assigned device.  Currently, if an op
     // is not specified a device, the device is defaulted to the TPU.
@@ -321,6 +327,12 @@ module tf.graph {
      */
     xlaClusterHistogram: {[device: string]: number};
 
+   /**
+     * Stores how many times each AMP cluster name appears in its children
+     * op nodes. Used to color group nodes by AMP clusters.
+     */
+    ampClusterHistogram: {[device: string]: number};
+
     /**
      * Stores how many ops in sub-graph were compatible and how many are
      * incompatible.
@@ -411,6 +423,7 @@ module tf.graph {
     outputShapes: {[key: string]: TensorShape};
     nodeAttributes: {[key: string]: any};
     xlaCluster: string;
+    ampCluster: string;
     compatible: boolean;
 
     // This field is only defined if the op node represents an input_arg to a
@@ -438,6 +451,7 @@ module tf.graph {
       this.inputs = normalizeInputs(rawNode.input);
       this.outputShapes = extractOutputShapes(rawNode.attr);
       this.xlaCluster = extractXlaCluster(rawNode.attr);
+      this.ampCluster = extractAmpCluster(rawNode.attr);
       this.compatible = false;
       // additional properties
       this.type = NodeType.OP;
@@ -632,6 +646,7 @@ module tf.graph {
     opHistogram: {[op: string]: number};
     deviceHistogram: {[op: string]: number};
     xlaClusterHistogram: {[op: string]: number};
+    ampClusterHistogram: {[op: string]: number};
     compatibilityHistogram: {compatible: number; incompatible: number};
     parentNode: Node;
     hasNonControlEdges: boolean;
@@ -665,6 +680,7 @@ module tf.graph {
       this.opHistogram = {};
       this.deviceHistogram = {};
       this.xlaClusterHistogram = {};
+      this.ampClusterHistogram = {};
       this.compatibilityHistogram = {compatible: 0, incompatible: 0};
       /** unique id for a metanode of similar subgraph */
       this.templateId = null;
@@ -890,6 +906,7 @@ module tf.graph {
     parentNode: Node;
     deviceHistogram: {[op: string]: number};
     xlaClusterHistogram: {[op: string]: number};
+    ampClusterHistogram: {[op: string]: number};
     compatibilityHistogram: {compatible: number; incompatible: number};
     hasNonControlEdges: boolean;
     include: InclusionType;
@@ -923,6 +940,7 @@ module tf.graph {
       this.parentNode = null;
       this.deviceHistogram = {};
       this.xlaClusterHistogram = {};
+      this.ampClusterHistogram = {};
       this.compatibilityHistogram = {compatible: 0, incompatible: 0};
       this.hasNonControlEdges = false;
       this.include = InclusionType.UNSPECIFIED;
@@ -999,6 +1017,29 @@ module tf.graph {
     // Find the attribute for XLA cluster if there is one.
     for (let i = 0; i < attr.length; i++) {
       if (attr[i].key === _XLA_CLUSTER_KEY) {
+        return attr[i].value['s'] || null;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extracts the AMP Cluster that an op runs on from the attrs of the OpNode.
+   * @param attr The attr property.
+   * @return A string that is the name of the cluster. Or null if it could not be
+   *     determined.
+   */
+  // tslint:disable-next-line:no-any
+  function extractAmpCluster(
+    attr: Array<{key: string; value: any}>
+  ): string | null {
+    if (!attr) {
+      return null;
+    }
+
+    // Find the attribute for AMP cluster if there is one.
+    for (let i = 0; i < attr.length; i++) {
+      if (attr[i].key === _AMP_CLUSTER_KEY) {
         return attr[i].value['s'] || null;
       }
     }
